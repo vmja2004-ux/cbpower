@@ -110,12 +110,12 @@
             </div>
             <h2 class="text-4xl font-black mb-6 tracking-tight text-slate-800" id="upload-title">匯入 CB 資訊看板</h2>
             <p class="text-slate-400 text-lg max-w-2xl mx-auto leading-relaxed font-medium">
-                自動篩選門檻：<span class="text-indigo-600 font-black">轉換價值 > 85</span> 且 <span class="text-indigo-600 font-black">剩餘比例 > 30%</span>。<br/>
-                新高判定：將當前數值與<span class="text-indigo-600 font-bold">前一日開始往前推算</span>的歷史區間進行比較。
+                自動門檻：<span class="text-indigo-600 font-black">轉換價值 > 85</span> 且 <span class="text-indigo-600 font-black">剩餘比例 > 30%</span>。<br/>
+                判定邏輯：<span class="text-indigo-600 font-bold underline">CBAS 採用 T-1 日數據對比 T-1~T-11 區間</span>；其餘採今日對比過往區間。
             </p>
         </div>
 
-        <!-- File Info Bar (Hidden by default) -->
+        <!-- File Info Bar -->
         <div id="file-info" class="hidden mb-12 border-2 border-indigo-100 bg-white rounded-[2.5rem] p-8 shadow-2xl flex flex-col xl:flex-row items-center justify-between gap-8">
             <div class="flex items-center gap-8">
                 <div class="bg-indigo-600 p-6 rounded-[2rem] shadow-2xl">
@@ -146,7 +146,7 @@
                     <span id="stat-cbas" class="text-6xl font-black tracking-tighter text-emerald-600">0</span>
                 </div>
                 <h3 class="font-black text-2xl text-slate-900">CBAS 10 日新高</h3>
-                <p class="text-base mt-3 font-medium text-slate-500">當前拆解數值超越過去 9 日</p>
+                <p class="text-base mt-3 font-medium text-slate-500">前 1 日數據為 T-1~T-11 區間最高</p>
                 <div class="absolute bottom-0 left-0 w-full h-2 bg-emerald-500"></div>
             </div>
 
@@ -156,7 +156,7 @@
                     <span id="stat-vol" class="text-6xl font-black tracking-tighter text-slate-100">0</span>
                 </div>
                 <h3 class="font-black text-2xl text-slate-500">成交量 10 日新高</h3>
-                <p class="text-base mt-3 font-medium text-slate-400">市場流動性顯著爆發</p>
+                <p class="text-base mt-3 font-medium text-slate-400">今日成交量超越前 10 日區間</p>
             </div>
 
             <div onclick="setActiveTab('ref_high')" id="tab-ref" class="stat-tab group cursor-pointer p-10 rounded-[2.5rem] border-2 border-slate-100 bg-white hover:border-amber-300 transition-all duration-300 relative overflow-hidden">
@@ -165,7 +165,7 @@
                     <span id="stat-ref" class="text-6xl font-black tracking-tighter text-slate-100">0</span>
                 </div>
                 <h3 class="font-black text-2xl text-slate-500">參考價 20 日新高</h3>
-                <p class="text-base mt-3 font-medium text-slate-400">長線價格結構正式突破</p>
+                <p class="text-base mt-3 font-medium text-slate-400">今日參考價超越前 20 日區間</p>
             </div>
         </div>
 
@@ -258,7 +258,7 @@
         <div class="h-[2px] w-full mb-12 opacity-10 bg-slate-200 dark:bg-slate-700" id="footer-line"></div>
         <p class="text-sm font-black text-slate-400 uppercase tracking-[0.5em] mb-4">Quant Edge Financial Intelligence Dashboard</p>
         <p class="text-xs font-bold text-slate-500 italic opacity-60">
-            篩選基準：轉換價值 > 85、剩餘比例 > 30% | HTML 專業版 v3.1
+            篩選基準：轉換價值 > 85、剩餘比例 > 30% | HTML 專業版 v3.3
         </p>
     </footer>
 
@@ -279,7 +279,6 @@
             lucide.createIcons();
             document.getElementById('current-date').innerText = new Date().toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' });
             
-            // Drag and drop setup
             const dropZone = document.getElementById('upload-zone');
             dropZone.onclick = () => document.getElementById('file-input').click();
             dropZone.ondragover = (e) => { e.preventDefault(); dropZone.classList.add('border-indigo-500', 'bg-indigo-50'); };
@@ -360,16 +359,26 @@
                 const volS = getSeries(volIdx);
                 const refS = getSeries(refIdx);
 
-                // 新高判定邏輯：今日 (index 0) vs 從前一日開始往前的區間 (index 1 ~ days-1)
-                const isHigh = (s, d) => {
-                    if (s.length < d) return false; // 確保歷史數據長度足夠
-                    const currentVal = s[0];
-                    // 從前一日 (索引 1) 開始抓取歷史數據區間
-                    const historicalBlock = s.slice(1, d); 
+                /**
+                 * 判定邏輯：
+                 * 1. 一般新高判定：拿「今日 (s[0])」去比較「前一日開始往前推算的歷史區間」
+                 * 2. CBAS 特殊新高判定：拿「前 1 日 (s[1])」去比較「前 1 日至前 11 日 (s[1]~s[11])」之最高值
+                 */
+                const isHigh = (series, historicalDays) => {
+                    if (series.length <= historicalDays) return false; 
+                    const currentVal = series[0];
+                    const historicalBlock = series.slice(1, historicalDays + 1); 
                     const peakInHistory = Math.max(...historicalBlock);
-                    
-                    // 當前值大於 0 且超越過去最大值
                     return currentVal > 0 && currentVal >= peakInHistory;
+                };
+
+                // CBAS 10日新高：前 1 日數據對比前 1 日至前 11 日
+                const isCbasHigh = (series) => {
+                    if (series.length < 12) return false;
+                    const targetVal = series[1]; // 前 1 日數據
+                    const compareRange = series.slice(1, 12); // 前 1 日至前 11 日 (共 11 筆數據)
+                    const peakInRange = Math.max(...compareRange);
+                    return targetVal > 0 && targetVal >= peakInRange;
                 };
 
                 return {
@@ -383,7 +392,9 @@
                     remaining: cols[idxRem] || '0%',
                     trust: cleanVal(cols[trustIdx[0]]),
                     cbas: cbasS[0] || 0,
-                    isCbas10High: isHigh(cbasS, 10),
+                    // 根據需求：CBAS 採特定 T-1 判定
+                    isCbas10High: isCbasHigh(cbasS),
+                    // 其餘保持今日對比過往區間
                     isVol10High: isHigh(volS, 10),
                     isRef20High: isHigh(refS, 20),
                     premiumVal: cleanVal(cols[idxPrem])
@@ -427,7 +438,6 @@
 
         function setActiveTab(tab) {
             activeTab = tab;
-            // Update UI tabs
             const tabs = document.querySelectorAll('.stat-tab');
             tabs.forEach(t => {
                 t.classList.remove('border-emerald-500', 'border-blue-500', 'border-amber-500', 'shadow-3xl', '-translate-y-3');
@@ -482,7 +492,6 @@
                 });
             }
 
-            // Update Sort Icons
             document.querySelectorAll('[id^="sort-"]').forEach(el => el.innerHTML = '<i data-lucide="chevron-up" class="w-4 h-4 opacity-10"></i>');
             const activeIcon = document.getElementById('sort-' + sortConfig.key);
             if (activeIcon) {
@@ -524,7 +533,7 @@
                         <td class="px-12 py-8 text-right">
                             <div class="flex flex-col items-end gap-1">
                                 <span class="font-mono font-black text-lg ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}">${item.volume.toLocaleString()}</span>
-                                ${item.isVol10High ? `<span class="text-[11px] font-black text-blue-500 uppercase bg-blue-500/10 px-2 py-0.5 rounded-lg border border-blue-500/20 tracking-tighter shadow-sm">Volume High</span>` : ''}
+                                ${item.isVol10High ? `<span class="text-[11px] font-black text-blue-500 uppercase bg-blue-500/10 px-2 py-0.5 rounded-lg border border-blue-500/20 tracking-tighter">Volume High</span>` : ''}
                             </div>
                         </td>
                         <td class="px-12 py-8 text-right">
@@ -540,7 +549,7 @@
                                 </span>
                             ` : '<span class="text-slate-300 opacity-30 dark:opacity-10">---</span>'}
                         </td>
-                        <td class="px-12 py-8 text-right transition-colors ${isDarkMode ? 'bg-indigo-500/10' : 'bg-indigo-50/40'}">
+                        <td class="px-12 py-8 text-right transition-colors ${isDarkMode ? 'bg-indigo-50/10' : 'bg-indigo-50/40'}">
                             <div class="flex flex-col items-end gap-1.5">
                                 <span class="font-mono font-black text-2xl tracking-tighter ${isDarkMode ? 'text-indigo-400' : 'text-indigo-700'}">${item.cbas.toLocaleString()}</span>
                                 ${item.isCbas10High ? `<span class="inline-flex items-center gap-1.5 text-[11px] font-black text-emerald-500 uppercase bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/40 animate-pulse">CBAS 10D High</span>` : ''}
@@ -565,7 +574,6 @@
                 html.classList.add('dark');
                 themeIcon.setAttribute('data-lucide', 'sun');
                 themeBtn.classList.replace('text-slate-400', 'text-amber-400');
-                themeBtn.classList.add('bg-slate-800');
             } else {
                 html.classList.remove('dark');
                 themeIcon.setAttribute('data-lucide', 'moon');
