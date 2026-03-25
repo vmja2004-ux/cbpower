@@ -111,7 +111,7 @@
             <h2 class="text-4xl font-black mb-6 tracking-tight text-slate-800" id="upload-title">匯入 CB 資訊看板</h2>
             <p class="text-slate-400 text-lg max-w-2xl mx-auto leading-relaxed font-medium">
                 自動門檻：<span class="text-indigo-600 font-black">轉換價值 &gt; 85</span> 且 <span class="text-indigo-600 font-black">剩餘比例 &gt; 30%</span>。<br/>
-                判定邏輯：<span class="text-indigo-600 font-bold underline">CBAS 採 T-1 對比 T-1~T-11</span>；成交量/參考價採 <span class="text-indigo-600 font-bold underline">今日對比過去 9/19 日</span>。
+                判定邏輯：<span class="text-indigo-600 font-bold underline">參考價新高需成交量 &gt; 10</span>；CBAS 採 T-1 對比 T-1~T-11。
             </p>
         </div>
 
@@ -165,7 +165,7 @@
                     <span id="stat-ref" class="text-6xl font-black tracking-tighter text-slate-100">0</span>
                 </div>
                 <h3 class="font-black text-2xl text-slate-500">參考價 20 日新高</h3>
-                <p class="text-base mt-3 font-medium text-slate-400">今日數據與過去 19 日比對之最高</p>
+                <p class="text-base mt-3 font-medium text-slate-400">價格新高且今日成交量 &gt; 10</p>
             </div>
         </div>
 
@@ -258,7 +258,7 @@
         <div class="h-[2px] w-full mb-12 opacity-10 bg-slate-200 dark:bg-slate-700" id="footer-line"></div>
         <p class="text-sm font-black text-slate-400 uppercase tracking-[0.5em] mb-4">Quant Edge Financial Intelligence Dashboard</p>
         <p class="text-xs font-bold text-slate-500 italic opacity-60">
-            篩選基準：轉換價值 &gt; 85、剩餘比例 &gt; 30% | HTML 專業版 v3.5
+            篩選基準：轉換價值 &gt; 85、剩餘比例 &gt; 30% | HTML 專業版 v3.6
         </p>
     </footer>
 
@@ -359,11 +359,6 @@
                 const volS = getSeries(volIdx);
                 const refS = getSeries(refIdx);
 
-                /**
-                 * 判定邏輯：今日 (s[0]) vs 過去 N 日區間 (s[1] ~ s[N])
-                 * 10 日視窗 = 今日 + 過去 9 日
-                 * 20 日視窗 = 今日 + 過去 19 日
-                 */
                 const isHigh = (series, historicalDays) => {
                     if (series.length <= historicalDays) return false; 
                     const currentVal = series[0];
@@ -372,7 +367,6 @@
                     return currentVal > 0 && currentVal >= peakInHistory;
                 };
 
-                // CBAS 10日新高：前 1 日數據 (s[1]) 對比前 1 日至前 11 日 (s[1]~s[11])
                 const isCbasHigh = (series) => {
                     if (series.length < 12) return false;
                     const targetVal = series[1]; 
@@ -391,13 +385,9 @@
                     premium: cols[idxPrem] || '0%',
                     remaining: cols[idxRem] || '0%',
                     trust: cleanVal(cols[trustIdx[0]]),
-                    // CBAS 欄位固定顯示前一日 (T-1) 數值
                     cbas: cbasS[1] || 0,
-                    // CBAS 判定：前 1 日數據對比 T-1~T-11
                     isCbas10High: isCbasHigh(cbasS),
-                    // 成交量 10 日新高：今日 vs 過去 9 日
                     isVol10High: isHigh(volS, 9),
-                    // 參考價 20 日新高：今日 vs 過去 19 日
                     isRef20High: isHigh(refS, 19),
                     premiumVal: cleanVal(cols[idxPrem])
                 };
@@ -417,7 +407,8 @@
             const base = rawData.filter(d => d.conversionValue > THRESHOLD_CONV_VALUE && cleanVal(d.remaining) > THRESHOLD_REMAINING);
             document.getElementById('stat-cbas').innerText = base.filter(d => d.isCbas10High).length;
             document.getElementById('stat-vol').innerText = base.filter(d => d.isVol10High).length;
-            document.getElementById('stat-ref').innerText = base.filter(d => d.isRef20High).length;
+            // 修正統計：只有「參考價 20日新高」的分頁，成交量必須 > 10
+            document.getElementById('stat-ref').innerText = base.filter(d => d.isRef20High && d.volume > 10).length;
             document.getElementById('match-count').innerText = base.length;
             document.getElementById('total-count').innerText = rawData.length;
             document.getElementById('match-total-display').innerText = base.length + ' 筆';
@@ -475,7 +466,8 @@
             switch(activeTab) {
                 case 'cbas_high': filtered = filtered.filter(d => d.isCbas10High); break;
                 case 'vol_high': filtered = filtered.filter(d => d.isVol10High); break;
-                case 'ref_high': filtered = filtered.filter(d => d.isRef20High); break;
+                // 修正篩選邏輯：參考價新高需額外滿足成交量 > 10
+                case 'ref_high': filtered = filtered.filter(d => d.isRef20High && d.volume > 10); break;
             }
 
             if (sortConfig.key) {
