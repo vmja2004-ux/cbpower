@@ -111,7 +111,7 @@
             <h2 class="text-4xl font-black mb-6 tracking-tight text-slate-800" id="upload-title">匯入 CB 資訊看板</h2>
             <p class="text-slate-400 text-lg max-w-2xl mx-auto leading-relaxed font-medium">
                 自動門檻：<span class="text-indigo-600 font-black">轉換價值 &gt; 85</span> 且 <span class="text-indigo-600 font-black">剩餘比例 &gt; 30%</span>。<br/>
-                判定邏輯：<span class="text-indigo-600 font-bold underline">參考價新高需成交量 &gt; 10</span>；CBAS 採 T-1 對比 T-1~T-11。
+                判定邏輯：<span class="text-indigo-600 font-bold underline">成交量與參考價新高需符合轉換價值 90-170</span>；CBAS 採 T-1 基準。
             </p>
         </div>
 
@@ -156,7 +156,7 @@
                     <span id="stat-vol" class="text-6xl font-black tracking-tighter text-slate-100">0</span>
                 </div>
                 <h3 class="font-black text-2xl text-slate-500">成交量 10 日新高</h3>
-                <p class="text-base mt-3 font-medium text-slate-400">今日數據與過去 9 日比對之最高</p>
+                <p class="text-base mt-3 font-medium text-slate-400">今日新高且轉換價值 90-170</p>
             </div>
 
             <div onclick="setActiveTab('ref_high')" id="tab-ref" class="stat-tab group cursor-pointer p-10 rounded-[2.5rem] border-2 border-slate-100 bg-white hover:border-amber-300 transition-all duration-300 relative overflow-hidden">
@@ -165,7 +165,7 @@
                     <span id="stat-ref" class="text-6xl font-black tracking-tighter text-slate-100">0</span>
                 </div>
                 <h3 class="font-black text-2xl text-slate-500">參考價 20 日新高</h3>
-                <p class="text-base mt-3 font-medium text-slate-400">價格新高且今日成交量 &gt; 10</p>
+                <p class="text-base mt-3 font-medium text-slate-400">價格新高、量 &gt; 10 且價值 90-170</p>
             </div>
         </div>
 
@@ -258,7 +258,7 @@
         <div class="h-[2px] w-full mb-12 opacity-10 bg-slate-200 dark:bg-slate-700" id="footer-line"></div>
         <p class="text-sm font-black text-slate-400 uppercase tracking-[0.5em] mb-4">Quant Edge Financial Intelligence Dashboard</p>
         <p class="text-xs font-bold text-slate-500 italic opacity-60">
-            篩選基準：轉換價值 &gt; 85、剩餘比例 &gt; 30% | HTML 專業版 v3.6
+            篩選基準：轉換價值 &gt; 85、剩餘比例 &gt; 30% | HTML 專業版 v3.7
         </p>
     </footer>
 
@@ -273,6 +273,8 @@
 
         const THRESHOLD_CONV_VALUE = 85;
         const THRESHOLD_REMAINING = 30;
+        const RANGE_MIN = 90;
+        const RANGE_MAX = 170;
 
         // --- Init ---
         window.onload = () => {
@@ -405,10 +407,18 @@
 
         function updateStats() {
             const base = rawData.filter(d => d.conversionValue > THRESHOLD_CONV_VALUE && cleanVal(d.remaining) > THRESHOLD_REMAINING);
+            
             document.getElementById('stat-cbas').innerText = base.filter(d => d.isCbas10High).length;
-            document.getElementById('stat-vol').innerText = base.filter(d => d.isVol10High).length;
-            // 修正統計：只有「參考價 20日新高」的分頁，成交量必須 > 10
-            document.getElementById('stat-ref').innerText = base.filter(d => d.isRef20High && d.volume > 10).length;
+            
+            // 修正統計：成交量新高與參考價新高需符合轉換價值 90-170
+            document.getElementById('stat-vol').innerText = base.filter(d => 
+                d.isVol10High && d.conversionValue >= RANGE_MIN && d.conversionValue <= RANGE_MAX
+            ).length;
+            
+            document.getElementById('stat-ref').innerText = base.filter(d => 
+                d.isRef20High && d.volume > 10 && d.conversionValue >= RANGE_MIN && d.conversionValue <= RANGE_MAX
+            ).length;
+
             document.getElementById('match-count').innerText = base.length;
             document.getElementById('total-count').innerText = rawData.length;
             document.getElementById('match-total-display').innerText = base.length + ' 筆';
@@ -464,10 +474,19 @@
             }
 
             switch(activeTab) {
-                case 'cbas_high': filtered = filtered.filter(d => d.isCbas10High); break;
-                case 'vol_high': filtered = filtered.filter(d => d.isVol10High); break;
-                // 修正篩選邏輯：參考價新高需額外滿足成交量 > 10
-                case 'ref_high': filtered = filtered.filter(d => d.isRef20High && d.volume > 10); break;
+                case 'cbas_high': 
+                    filtered = filtered.filter(d => d.isCbas10High); 
+                    break;
+                case 'vol_high': 
+                    filtered = filtered.filter(d => 
+                        d.isVol10High && d.conversionValue >= RANGE_MIN && d.conversionValue <= RANGE_MAX
+                    ); 
+                    break;
+                case 'ref_high': 
+                    filtered = filtered.filter(d => 
+                        d.isRef20High && d.volume > 10 && d.conversionValue >= RANGE_MIN && d.conversionValue <= RANGE_MAX
+                    ); 
+                    break;
             }
 
             if (sortConfig.key) {
