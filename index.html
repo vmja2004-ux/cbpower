@@ -21,10 +21,10 @@
             color: #f1f5f9;
         }
 
-        /* 滾動條樣式 */
+        /* 滾動條樣式 - 隱藏或極細化 */
         ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
+            width: 4px;
+            height: 4px;
         }
         ::-webkit-scrollbar-track {
             background: transparent;
@@ -42,22 +42,18 @@
             -webkit-backdrop-filter: blur(12px);
         }
 
-        .card-shadow {
-            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.05);
+        /* Tooltip 樣式 */
+        #chart-tooltip {
+            pointer-events: none;
+            transition: opacity 0.15s ease;
+            z-index: 9999;
+            font-size: 11px;
+            font-weight: 900;
         }
 
-        .sort-active {
-            color: #6366f1 !important;
-            opacity: 1 !important;
-        }
-
-        .animate-pulse-slow {
-            animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+        @keyframes pulse-fast {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(0.95); }
         }
     </style>
     <script>
@@ -66,191 +62,160 @@
             theme: {
                 extend: {
                     borderRadius: {
-                        '3xl': '1.25rem',
-                        '4xl': '2rem',
+                        '3xl': '1rem',
+                        '4xl': '1.5rem',
                     }
                 }
             }
         }
     </script>
 </head>
-<body class="bg-slate-50 text-slate-900 min-h-screen pb-10">
+<body class="bg-slate-50 text-slate-900 min-h-screen pb-6">
+
+    <!-- 全局浮動提示框 -->
+    <div id="chart-tooltip" class="fixed hidden bg-slate-900 text-white px-2 py-1 rounded shadow-2xl border border-slate-700 font-mono tracking-tighter"></div>
 
     <!-- Navbar - 緊湊高度 -->
-    <nav id="navbar" class="bg-slate-900 border-b border-slate-800 px-6 sm:px-10 py-3 sticky top-0 z-40 transition-colors duration-500 text-white shadow-lg">
-        <div class="max-w-[1700px] mx-auto flex justify-between items-center">
-            <div class="flex items-center gap-4">
-                <div class="bg-indigo-600 p-2 rounded-xl shadow-indigo-500/40 shadow-lg">
-                    <i data-lucide="trending-up" class="w-6 h-6"></i>
+    <nav id="navbar" class="bg-slate-900 border-b border-slate-800 px-6 py-2 sticky top-0 z-40 text-white shadow-md">
+        <div class="max-w-[1750px] mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="bg-indigo-600 p-1.5 rounded-lg">
+                    <i data-lucide="trending-up" class="w-5 h-5"></i>
                 </div>
                 <div>
-                    <h1 class="text-xl font-black tracking-tight leading-none">CB 專業監控中心</h1>
-                    <p class="text-[9px] text-indigo-400 font-bold uppercase tracking-[0.3em] mt-1 opacity-80">Quant Analytics Engine</p>
+                    <h1 class="text-lg font-black tracking-tight leading-none">CB 專業監控中心</h1>
+                    <p class="text-[8px] text-indigo-400 font-bold uppercase tracking-widest mt-1 opacity-70">Analytics Engine</p>
                 </div>
             </div>
             <div class="flex items-center gap-3">
-                <button onclick="toggleDarkMode()" class="p-2 rounded-xl transition-all bg-slate-800 text-slate-400 hover:text-white active:scale-90" id="theme-btn">
-                    <i data-lucide="moon" class="w-5 h-5" id="theme-icon"></i>
+                <button onclick="toggleDarkMode()" class="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white" id="theme-btn">
+                    <i data-lucide="moon" class="w-4 h-4" id="theme-icon"></i>
                 </button>
-                <div class="hidden md:flex items-center gap-3 bg-slate-800 px-4 py-1.5 rounded-xl border border-slate-700">
-                    <i data-lucide="calendar" class="w-4 h-4 text-indigo-400"></i>
-                    <span class="text-xs font-bold text-slate-300" id="current-date"></span>
+                <div class="bg-slate-800 px-3 py-1 rounded-lg border border-slate-700">
+                    <span class="text-[10px] font-bold text-slate-300" id="current-date"></span>
                 </div>
             </div>
         </div>
     </nav>
 
-    <main class="max-w-[1700px] mx-auto px-6 sm:px-10 py-6">
+    <main class="max-w-[1750px] mx-auto px-4 py-4">
         
-        <!-- Upload Zone - 緊湊排版 -->
-        <div id="upload-zone" class="group mb-8 border-4 border-dashed rounded-4xl p-12 text-center transition-all duration-500 cursor-pointer border-slate-200 bg-white hover:border-indigo-400 hover:shadow-xl">
+        <!-- Upload Zone -->
+        <div id="upload-zone" class="mb-4 border-2 border-dashed rounded-3xl p-8 text-center transition-all cursor-pointer border-slate-200 bg-white hover:border-indigo-400">
             <input type="file" id="file-input" class="hidden" accept=".csv,.txt">
-            <div class="bg-gradient-to-br from-indigo-500 to-blue-700 w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl group-hover:scale-105 transition-transform">
-                <i data-lucide="file-up" class="w-10 h-10 text-white"></i>
+            <div class="bg-indigo-600 w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-3 shadow-lg">
+                <i data-lucide="file-up" class="w-5 h-5 text-white"></i>
             </div>
-            <h2 class="text-2xl font-black mb-3 tracking-tight text-slate-800" id="upload-title">匯入數據</h2>
-            <p class="text-slate-400 text-base max-w-2xl mx-auto font-medium">
-                門檻：<span class="text-indigo-600 font-black">價值 &gt; 85</span> / <span class="text-indigo-600 font-black">剩餘 &gt; 30%</span><br/>
-                自動分析 20 日走勢與 5 日均量
-            </p>
+            <h2 class="text-xl font-black text-slate-800">匯入專業報表</h2>
+            <p class="text-slate-400 text-xs font-medium mt-1">分析 20日價格與 15日CBAS量能變化</p>
         </div>
 
-        <!-- File Info Bar - 減少高度 -->
-        <div id="file-info" class="hidden mb-6 border-2 border-indigo-100 bg-white rounded-4xl p-5 shadow-lg flex flex-col xl:flex-row items-center justify-between gap-4">
-            <div class="flex items-center gap-5">
-                <div class="bg-indigo-600 p-4 rounded-2xl shadow-xl shadow-indigo-100 dark:shadow-none">
-                    <i data-lucide="file-spreadsheet" class="w-8 h-8 text-white"></i>
+        <!-- File Info Bar -->
+        <div id="file-info" class="hidden mb-4 bg-white rounded-2xl p-3 shadow border border-slate-100 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-4">
+                <div class="bg-indigo-600 p-2.5 rounded-xl">
+                    <i data-lucide="file-spreadsheet" class="w-5 h-5 text-white"></i>
                 </div>
                 <div>
-                    <h3 id="file-name-display" class="font-black text-xl tracking-tight text-slate-800">檔名</h3>
-                    <div class="flex flex-wrap items-center gap-3 mt-1">
-                        <span class="flex items-center gap-1.5 text-xs font-black text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100">
-                            符合門檻：<span id="match-count">0</span> 檔
-                        </span>
-                        <span class="text-xs font-bold text-slate-400 bg-slate-100 px-3 py-1 rounded-full">
-                            總量：<span id="total-count">0</span> 檔
-                        </span>
+                    <h3 id="file-name-display" class="font-black text-sm text-slate-800 leading-none"></h3>
+                    <div class="flex items-center gap-2 mt-1">
+                        <span class="text-[10px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">符合：<span id="match-count">0</span></span>
+                        <span class="text-[10px] font-bold text-slate-400">總量：<span id="total-count">0</span></span>
                     </div>
                 </div>
             </div>
-            <button onclick="resetData()" class="px-6 py-2.5 bg-slate-100 text-slate-500 hover:bg-rose-50 hover:text-rose-600 rounded-2xl transition-all font-black text-sm flex items-center gap-2">
-                <i data-lucide="refresh-ccw" class="w-4 h-4"></i> 重選
-            </button>
+            <button onclick="resetData()" class="px-4 py-1.5 bg-slate-100 text-slate-500 rounded-xl font-black text-xs hover:bg-rose-50 hover:text-rose-600 transition-colors">重選</button>
         </div>
 
-        <!-- Stats Tabs - 緊湊設計 -->
-        <div id="stats-container" class="hidden grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div onclick="setActiveTab('cbas_high')" id="tab-cbas" class="stat-tab group cursor-pointer p-6 rounded-4xl border-2 border-emerald-500 bg-white shadow-md transition-all duration-300 relative overflow-hidden">
-                <div class="flex justify-between items-center mb-4">
-                    <div class="p-3 rounded-2xl bg-emerald-500 text-white"><i data-lucide="activity" class="w-6 h-6"></i></div>
-                    <span id="stat-cbas" class="text-4xl font-black tracking-tighter text-emerald-600">0</span>
+        <!-- Stats Tabs -->
+        <div id="stats-container" class="hidden grid grid-cols-3 gap-4 mb-4">
+            <div onclick="setActiveTab('cbas_high')" id="tab-cbas" class="stat-tab cursor-pointer p-4 rounded-2xl border-2 border-emerald-500 bg-white transition-all relative overflow-hidden">
+                <div class="flex justify-between items-center mb-1">
+                    <i data-lucide="activity" class="w-4 h-4 text-emerald-500"></i>
+                    <span id="stat-cbas" class="text-2xl font-black tracking-tighter text-emerald-600">0</span>
                 </div>
-                <h3 class="font-black text-lg text-slate-900 leading-tight">CBAS 10日新高</h3>
-                <p class="text-sm mt-1 font-medium text-slate-400 leading-tight">T-1 數據新高</p>
-                <div class="absolute bottom-0 left-0 w-full h-1.5 bg-emerald-500"></div>
+                <h3 class="font-black text-xs text-slate-900 leading-tight">CBAS 10日新高</h3>
+                <div class="absolute bottom-0 left-0 w-full h-1 bg-emerald-500"></div>
             </div>
 
-            <div onclick="setActiveTab('vol_high')" id="tab-vol" class="stat-tab group cursor-pointer p-6 rounded-4xl border-2 border-slate-100 bg-white hover:border-blue-300 transition-all duration-300 relative overflow-hidden">
-                <div class="flex justify-between items-center mb-4">
-                    <div class="p-3 rounded-2xl bg-slate-100 text-slate-400"><i data-lucide="bar-chart-3" class="w-6 h-6"></i></div>
-                    <span id="stat-vol" class="text-4xl font-black tracking-tighter text-slate-100">0</span>
+            <div onclick="setActiveTab('vol_high')" id="tab-vol" class="stat-tab cursor-pointer p-4 rounded-2xl border-2 border-slate-100 bg-white transition-all relative overflow-hidden">
+                <div class="flex justify-between items-center mb-1">
+                    <i data-lucide="bar-chart-3" class="w-4 h-4 text-slate-300"></i>
+                    <span id="stat-vol" class="text-2xl font-black tracking-tighter text-slate-100">0</span>
                 </div>
-                <h3 class="font-black text-lg text-slate-500 leading-tight">成交量 10日新高</h3>
-                <p class="text-sm mt-1 font-medium text-slate-400 leading-tight">價值 90-170</p>
+                <h3 class="font-black text-xs text-slate-500 leading-tight text-nowrap">成交量 10日新高</h3>
             </div>
 
-            <div onclick="setActiveTab('ref_high')" id="tab-ref" class="stat-tab group cursor-pointer p-6 rounded-4xl border-2 border-slate-100 bg-white hover:border-amber-300 transition-all duration-300 relative overflow-hidden">
-                <div class="flex justify-between items-center mb-4">
-                    <div class="p-3 rounded-2xl bg-slate-100 text-slate-400"><i data-lucide="layout-dashboard" class="w-6 h-6"></i></div>
-                    <span id="stat-ref" class="text-4xl font-black tracking-tighter text-slate-100">0</span>
+            <div onclick="setActiveTab('ref_high')" id="tab-ref" class="stat-tab cursor-pointer p-4 rounded-2xl border-2 border-slate-100 bg-white transition-all relative overflow-hidden">
+                <div class="flex justify-between items-center mb-1">
+                    <i data-lucide="layout-dashboard" class="w-4 h-4 text-slate-300"></i>
+                    <span id="stat-ref" class="text-2xl font-black tracking-tighter text-slate-100">0</span>
                 </div>
-                <h3 class="font-black text-lg text-slate-500 leading-tight">參考價 20日新高</h3>
-                <p class="text-sm mt-1 font-medium text-slate-400 leading-tight">量 &gt; 10 且價值 90-170</p>
+                <h3 class="font-black text-xs text-slate-500 leading-tight text-nowrap">參考價 20日新高</h3>
             </div>
         </div>
 
-        <!-- Table Section - 緊湊單元格 -->
-        <div id="table-container" class="hidden rounded-4xl border border-slate-200 bg-white shadow-xl overflow-hidden transition-all duration-500">
-            <div class="px-8 py-5 border-b border-slate-100 bg-slate-50/50 flex flex-col xl:flex-row justify-between items-center gap-6">
-                <div class="flex items-center gap-4">
-                    <div class="p-3 rounded-xl bg-white shadow border border-slate-100 text-indigo-600">
-                        <i data-lucide="filter" class="w-5 h-5"></i>
-                    </div>
-                    <div>
-                        <h2 id="list-title" class="text-xl font-black tracking-tight text-slate-800">監控名單</h2>
-                    </div>
-                </div>
-                
-                <div class="relative w-full xl:w-[400px]">
-                    <i data-lucide="search" class="w-5 h-5 absolute left-5 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                    <input type="text" id="search-input" oninput="handleSearch()" placeholder="搜尋代號或名稱..." class="w-full pl-12 pr-6 py-2.5 border border-slate-200 rounded-2xl outline-none transition-all text-sm font-bold focus:ring-4 focus:ring-indigo-500/10">
-                </div>
-            </div>
-
+        <!-- Table Section -->
+        <div id="table-container" class="hidden rounded-3xl border border-slate-200 bg-white shadow-lg overflow-hidden transition-all">
             <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse min-w-[1400px]">
-                    <thead>
-                        <tr class="text-[11px] font-black uppercase tracking-wider text-slate-400 bg-white">
-                            <th class="px-8 py-4 cursor-pointer group hover:text-indigo-600" onclick="handleSort('symbol')">
+                <table class="w-full text-left border-collapse min-w-[1450px]">
+                    <thead class="bg-slate-50/50">
+                        <tr class="text-[10px] font-black uppercase tracking-wider text-slate-400 border-b border-slate-100">
+                            <th class="px-6 py-3 cursor-pointer hover:text-indigo-600" onclick="handleSort('symbol')">
                                 <div class="flex items-center gap-2">標的 <span id="sort-symbol"></span></div>
                             </th>
-                            <th class="px-8 py-4 text-right cursor-pointer group hover:text-indigo-600" onclick="handleSort('price')">
-                                <div class="flex items-center justify-end gap-2">轉債價格 / 20日走勢 <span id="sort-price"></span></div>
+                            <th class="px-6 py-3 text-right cursor-pointer hover:text-indigo-600" onclick="handleSort('price')">
+                                <div class="flex items-center justify-end gap-2 text-slate-900">價格 / 20日走勢 <span id="sort-price"></span></div>
                             </th>
-                            <th class="px-8 py-4 text-right cursor-pointer group hover:text-indigo-600" onclick="handleSort('conversionValue')">
+                            <th class="px-6 py-3 text-right cursor-pointer hover:text-indigo-600" onclick="handleSort('conversionValue')">
                                 <div class="flex items-center justify-end gap-2 text-indigo-600">轉換價值 <span id="sort-conversionValue"></span></div>
                             </th>
-                            <th class="px-8 py-4 text-right cursor-pointer group hover:text-indigo-600" onclick="handleSort('volume')">
+                            <th class="px-6 py-3 text-right cursor-pointer hover:text-indigo-600" onclick="handleSort('volume')">
                                 <div class="flex items-center justify-end gap-2 text-slate-900">成交量 <span id="sort-volume"></span></div>
                             </th>
-                            <th class="px-8 py-4 text-right cursor-pointer group hover:text-indigo-600" onclick="handleSort('avgVolume5')">
+                            <th class="px-6 py-3 text-right cursor-pointer hover:text-indigo-600" onclick="handleSort('avgVolume5')">
                                 <div class="flex items-center justify-end gap-2">5日均量 <span id="sort-avgVolume5"></span></div>
                             </th>
-                            <th class="px-8 py-4 text-right cursor-pointer group hover:text-indigo-600" onclick="handleSort('premium')">
+                            <th class="px-6 py-3 text-right cursor-pointer hover:text-indigo-600" onclick="handleSort('premium')">
                                 <div class="flex items-center justify-end gap-2">折溢價 <span id="sort-premium"></span></div>
                             </th>
-                            <th class="px-8 py-4 text-right font-black text-indigo-600">剩餘%</th>
-                            <th class="px-8 py-4 text-center cursor-pointer group hover:text-indigo-600" onclick="handleSort('trust')">
+                            <th class="px-6 py-3 text-right font-black text-indigo-600">剩餘%</th>
+                            <th class="px-6 py-3 text-center cursor-pointer hover:text-indigo-600" onclick="handleSort('trust')">
                                 <div class="flex items-center justify-center gap-2">投信 <span id="sort-trust"></span></div>
                             </th>
-                            <th class="px-8 py-4 text-right cursor-pointer group hover:text-indigo-600 bg-indigo-50/40" onclick="handleSort('cbas')">
-                                <div class="flex items-center justify-end gap-2 text-indigo-700">CBAS(T-1) <span id="sort-cbas"></span></div>
+                            <th class="px-6 py-3 text-right cursor-pointer hover:text-indigo-600 bg-indigo-50/40" onclick="handleSort('cbas')">
+                                <div class="flex items-center justify-end gap-2 text-indigo-800">CBAS(T-1) / 15日量能 <span id="sort-cbas"></span></div>
                             </th>
                         </tr>
                     </thead>
-                    <tbody id="table-body" class="divide-y divide-slate-100">
-                        <!-- Data Rows -->
+                    <tbody id="table-body" class="divide-y divide-slate-50">
+                        <!-- Rows -->
                     </tbody>
                 </table>
-            </div>
-
-            <div class="px-8 py-4 bg-slate-900 flex flex-col sm:flex-row justify-between items-center gap-6">
-                <div class="flex gap-10 text-[10px] font-black uppercase tracking-widest text-slate-500">
-                    <div>顯示：<span id="display-count" class="text-white">0</span> 筆</div>
-                    <div>總量：<span id="match-total-display" class="text-white">0</span> 筆</div>
-                </div>
-                <div class="flex gap-6">
-                    <div class="flex items-center gap-3 px-4 py-1.5 rounded-xl bg-slate-800 border border-slate-700">
-                        <div class="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-emerald-500/50 shadow"></div>
-                        <span class="text-[9px] font-black uppercase text-slate-400">CBAS新高</span>
-                    </div>
-                    <div class="flex items-center gap-3 px-4 py-1.5 rounded-xl bg-slate-800 border border-slate-700">
-                        <div class="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-blue-500/50 shadow"></div>
-                        <span class="text-[9px] font-black uppercase text-slate-400">爆量</span>
-                    </div>
-                </div>
             </div>
         </div>
 
         <!-- Empty State -->
-        <div id="empty-state" class="hidden py-40 flex flex-col items-center justify-center">
-            <i data-lucide="alert-circle" class="w-24 h-24 text-slate-100 mb-6"></i>
-            <p class="text-2xl font-black text-slate-300">目前無符合條件之標的</p>
+        <div id="empty-state" class="hidden py-32 flex flex-col items-center">
+            <i data-lucide="alert-circle" class="w-16 h-16 text-slate-200 mb-4"></i>
+            <p class="text-xl font-black text-slate-300">目前無符合條件之標的</p>
         </div>
     </main>
 
     <script>
-        // --- State Management ---
+        // --- 全局 Tooltip 邏輯 ---
+        window.showChartTooltip = (e, val, type, dateLabel) => {
+            const tooltip = document.getElementById('chart-tooltip');
+            tooltip.innerHTML = `<span class="opacity-50 mr-1">${dateLabel}</span> ${type}: <span class="text-indigo-400">${val}</span>`;
+            tooltip.classList.remove('hidden');
+            tooltip.style.left = (e.clientX + 10) + 'px';
+            tooltip.style.top = (e.clientY - 30) + 'px';
+        };
+        window.hideChartTooltip = () => {
+            document.getElementById('chart-tooltip').classList.add('hidden');
+        };
+
+        // --- State ---
         let rawData = [];
         let activeTab = 'cbas_high';
         let sortConfig = { key: 'cbas', direction: 'desc' };
@@ -265,19 +230,17 @@
         // --- Init ---
         window.onload = () => {
             lucide.createIcons();
-            document.getElementById('current-date').innerText = new Date().toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' });
+            document.getElementById('current-date').innerText = new Date().toLocaleDateString('zh-TW', { month: '2-digit', day: '2-digit', weekday: 'short' });
             
             const dropZone = document.getElementById('upload-zone');
             dropZone.onclick = () => document.getElementById('file-input').click();
-            dropZone.ondragover = (e) => { e.preventDefault(); dropZone.classList.add('border-indigo-500', 'bg-indigo-50'); };
-            dropZone.ondragleave = () => { dropZone.classList.remove('border-indigo-500', 'bg-indigo-50'); };
+            dropZone.ondragover = (e) => { e.preventDefault(); dropZone.classList.add('border-indigo-400', 'bg-indigo-50'); };
+            dropZone.ondragleave = () => { dropZone.classList.remove('border-indigo-400', 'bg-indigo-50'); };
             dropZone.ondrop = (e) => {
                 e.preventDefault();
-                dropZone.classList.remove('border-indigo-500', 'bg-indigo-50');
-                const file = e.dataTransfer.files[0];
-                handleFile(file);
+                dropZone.classList.remove('border-indigo-400', 'bg-indigo-50');
+                handleFile(e.dataTransfer.files[0]);
             };
-
             document.getElementById('file-input').onchange = (e) => handleFile(e.target.files[0]);
         };
 
@@ -288,31 +251,58 @@
             reader.readAsText(file);
         }
 
-        const cleanVal = (val) => {
-            if (!val) return 0;
-            return parseFloat(val.toString().replace(/[%,"]/g, '').replace(/\s/g, '')) || 0;
+        const cleanVal = (v) => {
+            if (!v) return 0;
+            return parseFloat(v.toString().replace(/[%,"]/g, '').replace(/\s/g, '')) || 0;
         };
 
-        function createSparklineSVG(series, isUp = true) {
-            if (!series || series.length < 2) return '';
-            const data = series.slice(0, 20).reverse();
+        /**
+         * 繪製交互式柱狀圖 (Bar Chart)
+         * @param {Array} series 數列
+         * @param {Number} count 顯示天數
+         * @param {String} color 顏色
+         * @param {Number} skip 忽略開頭天數 (例如 CBAS 忽視 T-0)
+         * @param {String} typeName 數據類型名稱 (用於 Tooltip)
+         */
+        function createBarChartSVG(series, count = 20, color = null, skip = 0, typeName = "") {
+            if (!series || series.length < (skip + 1)) return '';
+            
+            const data = series.slice(skip, skip + count).reverse();
             const min = Math.min(...data);
             const max = Math.max(...data);
-            const range = max - min || 1;
-            const width = 100;
+            const range = (max - min) || 1;
+            
+            const width = 110;
             const height = 24;
-            const padding = 2;
-            const points = data.map((val, i) => {
-                const x = (i / (data.length - 1)) * width;
-                const y = height - ((val - min) / range) * (height - padding * 2) - padding;
-                return `${x},${y}`;
-            }).join(' ');
-            const strokeColor = isUp ? (isDarkMode ? '#818cf8' : '#4f46e5') : '#94a3b8';
-            return `
-                <svg width="${width}" height="${height}" class="mt-1 ml-auto block opacity-80 group-hover:opacity-100 transition-opacity">
-                    <polyline fill="none" stroke="${strokeColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" points="${points}" />
-                </svg>
-            `;
+            const gap = 1;
+            const barWidth = (width - (gap * (data.length - 1))) / data.length;
+            const strokeColor = color || (isDarkMode ? '#818cf8' : '#4f46e5');
+
+            let bars = '';
+            data.forEach((val, i) => {
+                const x = i * (barWidth + gap);
+                const h = Math.max(((val - min) / range) * height, 1.5);
+                const y = height - h;
+                const isMax = (val === max && val !== min);
+                
+                // 決定日期標籤
+                let dateLabel = "";
+                if (skip === 1) {
+                    // CBAS 邏輯: 這裡是反轉過的，最後一個柱子是 T-1
+                    dateLabel = `T-${(count) - i}`;
+                } else {
+                    // 價格邏輯: 這裡是反轉過的，最後一個柱子是 今日
+                    dateLabel = (i === data.length - 1) ? "今日" : `T-${(data.length - 1) - i}`;
+                }
+
+                bars += `<rect x="${x}" y="${y}" width="${barWidth}" height="${h}" rx="0.3" 
+                        fill="${strokeColor}" fill-opacity="${isMax ? '1' : '0.35'}" 
+                        class="cursor-crosshair transition-opacity hover:fill-opacity-100"
+                        onmousemove="window.showChartTooltip(event, '${val.toLocaleString()}', '${typeName}', '${dateLabel}')" 
+                        onmouseleave="window.hideChartTooltip()" />`;
+            });
+            
+            return `<svg width="${width}" height="${height}" class="mt-1 ml-auto block overflow-visible">${bars}</svg>`;
         }
 
         function parseCSV(content, name) {
@@ -321,12 +311,11 @@
 
             const splitCSVLine = (line) => {
                 const result = [];
-                let current = '';
-                let inQuotes = false;
+                let current = '', inQuotes = false;
                 for (let char of line) {
                     if (char === '"') inQuotes = !inQuotes;
                     else if (char === ',' && !inQuotes) { result.push(current); current = ''; }
-                    else { current += char; }
+                    else current += char;
                 }
                 result.push(current);
                 return result;
@@ -335,8 +324,8 @@
             const row0 = splitCSVLine(lines[0]);
             const row1 = splitCSVLine(lines[1]);
 
-            const findColumns = (category) => {
-                let start = row0.findIndex(h => h.includes(category));
+            const findColumns = (cat) => {
+                let start = row0.findIndex(h => h.includes(cat));
                 if (start === -1) return [];
                 const indices = [];
                 for (let i = start; i < row1.length; i++) {
@@ -360,28 +349,25 @@
 
             rawData = lines.slice(2).map((line, index) => {
                 const cols = splitCSVLine(line);
-                const getSeries = (idx) => idx.map(i => cleanVal(cols[i]));
-                const cbasS = getSeries(cbasIdx);
-                const volS = getSeries(volIdx);
-                const refS = getSeries(refIdx);
+                const getS = (idx) => idx.map(i => cleanVal(cols[i]));
+                const cbasS = getS(cbasIdx);
+                const volS = getS(volIdx);
+                const refS = getS(refIdx);
 
-                const volSeries5 = volS.slice(0, 5);
-                const avgVol5 = volSeries5.length > 0 ? (volSeries5.reduce((a, b) => a + b, 0) / volSeries5.length) : 0;
+                const avgVol5 = volS.slice(0, 5).reduce((a, b) => a + b, 0) / 5;
 
-                const isHigh = (series, historicalDays) => {
-                    if (series.length <= historicalDays) return false; 
-                    const currentVal = series[0];
-                    const historicalBlock = series.slice(1, historicalDays + 1); 
-                    const peakInHistory = Math.max(...historicalBlock);
-                    return currentVal > 0 && currentVal >= peakInHistory;
+                const isHigh = (s, d) => {
+                    if (s.length <= d) return false;
+                    const cur = s[0];
+                    const hist = s.slice(1, d + 1);
+                    return cur > 0 && cur >= Math.max(...hist);
                 };
 
-                const isCbasHigh = (series) => {
-                    if (series.length < 12) return false;
-                    const targetVal = series[1]; 
-                    const compareRange = series.slice(1, 12); 
-                    const peakInRange = Math.max(...compareRange);
-                    return targetVal > 0 && targetVal >= peakInRange;
+                const isCbasHigh = (s) => {
+                    if (s.length < 12) return false;
+                    const target = s[1];
+                    const range = s.slice(1, 12);
+                    return target > 0 && target >= Math.max(...range);
                 };
 
                 return {
@@ -397,6 +383,7 @@
                     remaining: cols[idxRem] || '0%',
                     trust: cleanVal(cols[trustIdx[0]]),
                     cbas: cbasS[1] || 0,
+                    cbasSeries: cbasS,
                     isCbas10High: isCbasHigh(cbasS),
                     isVol10High: isHigh(volS, 9),
                     isRef20High: isHigh(refS, 19),
@@ -421,7 +408,6 @@
             document.getElementById('stat-ref').innerText = base.filter(d => d.isRef20High && d.volume > 10 && d.conversionValue >= RANGE_MIN && d.conversionValue <= RANGE_MAX).length;
             document.getElementById('match-count').innerText = base.length;
             document.getElementById('total-count').innerText = rawData.length;
-            document.getElementById('match-total-display').innerText = base.length;
         }
 
         function handleSearch() {
@@ -439,13 +425,13 @@
             activeTab = tab;
             const tabs = document.querySelectorAll('.stat-tab');
             tabs.forEach(t => {
-                t.classList.remove('border-emerald-500', 'border-blue-500', 'border-amber-500', 'shadow-md', '-translate-y-1');
+                t.classList.remove('border-emerald-500', 'border-blue-500', 'border-amber-500', 'shadow-md');
                 t.classList.add('border-slate-100');
             });
             const activeT = document.getElementById('tab-' + tab.split('_')[0]);
             const color = tab === 'cbas_high' ? 'emerald' : tab === 'vol_high' ? 'blue' : 'amber';
             activeT.classList.remove('border-slate-100');
-            activeT.classList.add('border-' + color + '-500', 'shadow-md', '-translate-y-1');
+            activeT.classList.add('border-' + color + '-500', 'shadow-sm');
             render();
         }
 
@@ -481,54 +467,52 @@
                 document.getElementById('table-container').classList.remove('hidden');
                 document.getElementById('empty-state').classList.add('hidden');
                 filtered.forEach(item => {
-                    const avgPrice20 = item.priceSeries.slice(0, 20).reduce((a,b)=>a+b,0) / Math.min(item.priceSeries.length, 20);
-                    const isPriceStrong = item.price >= avgPrice20;
                     const row = document.createElement('tr');
                     row.className = `transition-all group ${isDarkMode ? 'hover:bg-indigo-500/10' : 'hover:bg-indigo-50/20'}`;
                     row.innerHTML = `
-                        <td class="px-8 py-4">
+                        <td class="px-6 py-3">
                             <div class="flex flex-col">
-                                <span class="text-xs font-black font-mono text-slate-400">${item.symbol}</span>
-                                <span class="font-black text-lg group-hover:text-indigo-600 transition-colors ${isDarkMode ? 'text-slate-200' : 'text-slate-900'}">${item.name}</span>
+                                <span class="text-[10px] font-black font-mono text-slate-400">${item.symbol}</span>
+                                <span class="font-black text-sm group-hover:text-indigo-600 ${isDarkMode ? 'text-slate-200' : 'text-slate-900'}">${item.name}</span>
                             </div>
                         </td>
-                        <td class="px-8 py-4 text-right">
+                        <td class="px-6 py-3 text-right">
                             <div class="flex flex-col items-end justify-center">
-                                <span class="font-mono font-black text-xl ${isDarkMode ? 'text-slate-300' : 'text-slate-800'}">${item.price.toFixed(2)}</span>
-                                ${createSparklineSVG(item.priceSeries, isPriceStrong)}
-                                ${item.isRef20High ? `<span class="text-[9px] font-black text-amber-500 uppercase mt-0.5">20D Breakout</span>` : ''}
+                                <span class="font-mono font-black text-lg ${isDarkMode ? 'text-slate-300' : 'text-slate-800'}">${item.price.toFixed(2)}</span>
+                                ${createBarChartSVG(item.priceSeries, 20, null, 0, "價格")}
+                                ${item.isRef20High ? `<span class="text-[8px] font-black text-amber-500 uppercase mt-0.5 animate-pulse">20D Breakout</span>` : ''}
                             </div>
                         </td>
-                        <td class="px-8 py-4 text-right">
+                        <td class="px-6 py-3 text-right">
                             <span class="font-mono font-black text-2xl ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}">${item.conversionValue.toFixed(1)}</span>
                         </td>
-                        <td class="px-8 py-4 text-right">
+                        <td class="px-6 py-3 text-right">
                             <div class="flex flex-col items-end justify-center">
                                 <span class="font-mono font-black text-lg ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}">${item.volume.toLocaleString()}</span>
-                                ${item.isVol10High ? `<span class="text-[9px] font-black text-blue-500 uppercase">Volume High</span>` : ''}
+                                ${item.isVol10High ? `<span class="text-[8px] font-black text-blue-500 uppercase">Vol High</span>` : ''}
                             </div>
                         </td>
-                        <td class="px-8 py-4 text-right">
+                        <td class="px-6 py-3 text-right">
                             <span class="font-mono text-base font-bold text-slate-400">${item.avgVolume5.toFixed(1)}</span>
                         </td>
-                        <td class="px-8 py-4 text-right">
-                            <span class="px-3 py-1 rounded-xl text-xs font-black border-2 ${item.premiumVal > 15 ? 'bg-rose-50 text-rose-600 border-rose-100' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}">${item.premium}</span>
+                        <td class="px-6 py-3 text-right">
+                            <span class="px-2 py-0.5 rounded-lg text-[10px] font-black border ${item.premiumVal > 15 ? 'bg-rose-50 text-rose-600 border-rose-100' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}">${item.premium}</span>
                         </td>
-                        <td class="px-8 py-4 text-right font-black text-xl italic ${isDarkMode ? 'text-slate-300' : 'text-slate-800'}">${item.remaining}</td>
-                        <td class="px-8 py-4 text-center">
-                            <span class="inline-flex items-center justify-center min-w-[50px] px-3 py-1 rounded-xl font-black text-xs border ${item.trust > 0 ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'}">${item.trust > 0 ? '+'+item.trust : item.trust}</span>
+                        <td class="px-6 py-3 text-right font-black text-xl italic ${isDarkMode ? 'text-slate-300' : 'text-slate-800'}">${item.remaining}</td>
+                        <td class="px-6 py-3 text-center">
+                            <span class="inline-flex items-center justify-center min-w-[45px] px-2 py-0.5 rounded-lg font-black text-[10px] border ${item.trust > 0 ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'}">${item.trust > 0 ? '+'+item.trust : item.trust}</span>
                         </td>
-                        <td class="px-8 py-4 text-right bg-indigo-50/20">
+                        <td class="px-6 py-3 text-right bg-indigo-50/20">
                             <div class="flex flex-col items-end">
                                 <span class="font-mono font-black text-2xl text-indigo-700">${item.cbas.toLocaleString()}</span>
-                                ${item.isCbas10High ? `<span class="text-[9px] font-black text-emerald-500 uppercase animate-pulse">10D High</span>` : ''}
+                                ${createBarChartSVG(item.cbasSeries, 15, '#10b981', 1, "CBAS")}
+                                ${item.isCbas10High ? `<span class="text-[8px] font-black text-emerald-500 uppercase animate-pulse">10D High</span>` : ''}
                             </div>
                         </td>
                     `;
                     tbody.appendChild(row);
                 });
             }
-            document.getElementById('display-count').innerText = filtered.length;
             lucide.createIcons();
         }
 
